@@ -1,5 +1,8 @@
 # 🔌 LOE Power Outage Scraper - Home Assistant Integration
 
+[![Open your Home Assistant instance and open the repository inside the HACS store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=orest0&repository=LOE-Power-Outage-Scraper&category=integration)
+[![Validate the integration with the Quality Scale S](https://badgers.home-assistant.io/loae_power_outage_scraper/quality_scale.svg)](https://developers.home-assistant.io/docs/quality_scale/)
+
 Ukrainian Power Outage Scraper Integration for Home Assistant. Automatically fetches power outage schedule from poweron.loe.lviv.ua and creates sensors and calendars in Home Assistant.
 
 ## 🇺🇦 Ukrainian / 🇬🇧 English
@@ -127,7 +130,8 @@ automation:
 ### No entities appear
 
 - Check Home Assistant logs: **Settings** → **System** → **Logs**
-- Make sure playwright is installed: `pip3 install playwright && python3 -m playwright install chromium`
+- Make sure playwright is installed in HA: should be auto-installed via requirements
+- Try restarting Home Assistant after adding the integration
 
 ### Calendar not showing events
 
@@ -142,8 +146,13 @@ automation:
 - Python 3.11+
 - playwright
 - pyyaml
+- Internet connection to access poweron.loe.lviv.ua
 
 ---
+
+## 📄 License
+
+MIT License
 
 ## 🤝 Contributing
 
