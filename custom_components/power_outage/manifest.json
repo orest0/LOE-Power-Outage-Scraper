@@ -7,5 +7,5 @@
   "integration_type": "service",
   "iot_class": "cloud_polling",
   "requirements": ["requests", "beautifulsoup4", "pyyaml"],
-  "version": "1.0.7"
+  "version": "1.0.8"
 }
