@@ -2,36 +2,43 @@
 
 from datetime import datetime, timedelta
 import logging
-import re
-from typing import Any
 
 from homeassistant.components.calendar import CalendarEntity, CalendarEvent
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-from .const import DOMAIN
-from .sensor import parse_outage_page, PowerOutageGroup
+from .const import DOMAIN, CONF_GROUPS
 
 _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
     """Set up calendar from config entry."""
-    pass
+    from .coordinator import PowerOutageCoordinator
 
+    coordinator = hass.data.get(DOMAIN, {}).get(entry.entry_id)
+    if not coordinator:
+        _LOGGER.error("Coordinator not found")
+        return
 
-def create_calendar_entities(groups: list[PowerOutageGroup]) -> list:
-    """Create calendar entities from groups."""
+    groups = coordinator.groups
+    selected_groups = entry.data.get(CONF_GROUPS, [])
+
     entities = []
-
     for group in groups:
+        if selected_groups and group.group_id not in selected_groups:
+            continue
+
         entities.append(
             PowerOutageCalendar(
-                group.group_id, group.outages_today, group.outages_tomorrow
+                group.group_id,
+                group.outages_today,
+                group.outages_tomorrow,
             )
         )
 
-    return entities
+    if entities:
+        async_add_entities(entities)
+        _LOGGER.info(f"Added {len(entities)} calendar entities")
 
 
 class PowerOutageCalendar(CalendarEntity):

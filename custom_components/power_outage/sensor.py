@@ -1,23 +1,92 @@
 """Sensor platform for LOE Power Outage."""
 
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 import re
-from typing import Any
 
 from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.components.sensor import SensorEntity
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-from .const import DOMAIN
+from .const import DOMAIN, CONF_GROUPS
 
 _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
     """Set up sensors from config entry."""
-    pass
+    from .coordinator import PowerOutageCoordinator
+
+    coordinator = hass.data.get(DOMAIN, {}).get(entry.entry_id)
+    if not coordinator:
+        _LOGGER.error("Coordinator not found")
+        return
+
+    groups = coordinator.groups
+    selected_groups = entry.data.get(CONF_GROUPS, [])
+    now = datetime.now()
+    current_time = now.time()
+
+    entities = []
+    for group in groups:
+        if selected_groups and group.group_id not in selected_groups:
+            continue
+
+        is_active = False
+        current_outage = None
+        next_outage = None
+
+        for outage in group.outages_today:
+            try:
+                t_start = parse_outage_time(outage["start"])
+                t_end = parse_outage_time(outage["end"])
+            except ValueError:
+                continue
+
+            if t_start <= current_time <= t_end:
+                is_active = True
+                current_outage = outage
+            elif t_start > current_time and next_outage is None:
+                next_outage = outage
+
+        entities.append(
+            PowerOutageBinarySensor(
+                group.group_id,
+                is_active,
+                current_outage,
+                next_outage,
+                group.outages_today,
+            )
+        )
+
+        entities.append(
+            PowerOutageNextSensor(
+                group.group_id,
+                "start",
+                next_outage["start"] if next_outage else "—",
+            )
+        )
+
+        entities.append(
+            PowerOutageNextSensor(
+                group.group_id,
+                "end",
+                next_outage["end"] if next_outage else "—",
+            )
+        )
+
+        if group.outages_tomorrow:
+            entities.append(
+                PowerOutageTomorrowSensor(
+                    group.group_id,
+                    group.outages_today,
+                    group.outages_tomorrow,
+                )
+            )
+
+    if entities:
+        async_add_entities(entities)
+        _LOGGER.info(f"Added {len(entities)} sensor entities")
 
 
 def parse_outage_time(t_str: str):
@@ -85,75 +154,6 @@ def parse_outage_page(text: str) -> list[PowerOutageGroup]:
                     existing_group.outages_tomorrow.extend(outage_ranges)
 
     return groups
-
-
-def create_sensor_entities(groups: list[PowerOutageGroup], config: dict) -> list:
-    """Create sensor and binary sensor entities from groups."""
-    entities = []
-    now = datetime.now()
-    current_time = now.time()
-
-    for group in groups:
-        suffix = group.suffix
-
-        # Check if active now
-        is_active = False
-        current_outage = None
-        next_outage = None
-
-        for outage in group.outages_today:
-            try:
-                t_start = parse_outage_time(outage["start"])
-                t_end = parse_outage_time(outage["end"])
-            except ValueError:
-                continue
-
-            if t_start <= current_time <= t_end:
-                is_active = True
-                current_outage = outage
-            elif t_start > current_time and next_outage is None:
-                next_outage = outage
-
-        # Binary sensor
-        entities.append(
-            PowerOutageBinarySensor(
-                group.group_id,
-                is_active,
-                current_outage,
-                next_outage,
-                group.outages_today,
-            )
-        )
-
-        # Next start sensor
-        entities.append(
-            PowerOutageNextSensor(
-                group.group_id,
-                "start",
-                next_outage["start"] if next_outage else "—",
-            )
-        )
-
-        # Next end sensor
-        entities.append(
-            PowerOutageNextSensor(
-                group.group_id,
-                "end",
-                next_outage["end"] if next_outage else "—",
-            )
-        )
-
-        # Tomorrow sensor
-        if group.outages_tomorrow:
-            entities.append(
-                PowerOutageTomorrowSensor(
-                    group.group_id,
-                    group.outages_today,
-                    group.outages_tomorrow,
-                )
-            )
-
-    return entities
 
 
 class PowerOutageBinarySensor(BinarySensorEntity):
@@ -234,7 +234,7 @@ class PowerOutageTomorrowSensor(SensorEntity):
 
             all_events = []
             today = datetime.now().strftime("%Y-%m-%d")
-            tomorrow = (datetime.now()).strftime("%Y-%m-%d")
+            tomorrow = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
 
             for outage in outages_today:
                 all_events.append(
