@@ -7,7 +7,15 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.data_entry_flow import FlowResult
 
-from .const import CONF_INTERVAL, CONF_URL, DEFAULT_INTERVAL, DEFAULT_URL, DOMAIN
+from .const import (
+    ALL_GROUPS,
+    CONF_GROUPS,
+    CONF_INTERVAL,
+    CONF_URL,
+    DEFAULT_INTERVAL,
+    DEFAULT_URL,
+    DOMAIN,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -15,6 +23,10 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_URL, default=DEFAULT_URL): str,
         vol.Required(CONF_INTERVAL, default=DEFAULT_INTERVAL): int,
+        vol.Required(CONF_GROUPS, default=ALL_GROUPS): vol.All(
+            vol.Length(min=1),
+            [vol.In(ALL_GROUPS)],
+        ),
     }
 )
 

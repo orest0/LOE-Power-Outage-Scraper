@@ -7,7 +7,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import async_add_entities
 
-from .const import DOMAIN, CONF_INTERVAL, CONF_URL
+from .const import DOMAIN, CONF_INTERVAL, CONF_URL, CONF_GROUPS
 from .coordinator import PowerOutageCoordinator
 from .sensor import (
     PowerOutageBinarySensor,
@@ -33,12 +33,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data[DOMAIN][entry.entry_id] = coordinator
 
     groups = coordinator.groups
+    selected_groups = config.get(CONF_GROUPS, [])
+
     if groups:
         entities = []
         now = datetime.now()
         current_time = now.time()
 
         for group in groups:
+            if selected_groups and group.group_id not in selected_groups:
+                continue
+
             is_active = False
             current_outage = None
             next_outage = None
