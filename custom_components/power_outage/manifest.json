@@ -6,6 +6,6 @@
   "documentation": "https://github.com/orest0/LOE-Power-Outage-Scraper",
   "integration_type": "service",
   "iot_class": "cloud_polling",
-  "requirements": ["playwright", "pyyaml", "requests"],
+  "requirements": ["requests", "beautifulsoup4", "pyyaml"],
   "version": "1.0.3"
 }
