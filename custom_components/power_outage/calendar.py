@@ -8,22 +8,11 @@ from typing import Any
 from homeassistant.components.calendar import CalendarEntity, CalendarEvent
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 from .sensor import parse_outage_page, PowerOutageGroup
 
 _LOGGER = logging.getLogger(__name__)
-
-
-async def async_setup_entry(
-    hass: HomeAssistant,
-    entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback,
-) -> None:
-    """Set up calendar from config entry."""
-    # Calendar entities will be created dynamically
-    pass
 
 
 def create_calendar_entities(groups: list[PowerOutageGroup]) -> list:
