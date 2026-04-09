@@ -53,8 +53,8 @@ class PowerOutageCoordinator(DataUpdateCoordinator):
             last_updated = data.get("last_updated", datetime.now().isoformat())
 
             groups = []
-            for group_data in data.get("groups", []):
-                group = PowerOutageGroup(group_data.get("id", ""))
+            for group_data in data.get("outage_groups", []):
+                group = PowerOutageGroup(group_data.get("group", ""))
                 group.outages_today = group_data.get("outages_today", [])
                 group.outages_tomorrow = group_data.get("outages_tomorrow", [])
                 groups.append(group)
