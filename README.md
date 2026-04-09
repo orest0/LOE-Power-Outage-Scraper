@@ -1,136 +1,111 @@
-# 🔌 LOE Power Outage Scraper → Home Assistant
+# 🔌 LOE Power Outage Scraper - Home Assistant Integration
 
-Скрипт автоматично парсить графік відключень з [poweron.loe.lviv.ua](https://poweron.loe.lviv.ua) і публікує дані в Home Assistant через REST API.
+Ukrainian Power Outage Scraper Integration for Home Assistant. Automatically fetches power outage schedule from poweron.loe.lviv.ua and creates sensors and calendars in Home Assistant.
 
----
+## 🇺🇦 Ukrainian / 🇬🇧 English
 
-## 📁 Файли проекту
+Ця інтеграція автоматично парсить графік відключень електроенергії з сайту LOE (Львівобленерго) і створює сенсори та календарі в Home Assistant.
 
-| Файл | Призначення |
-|------|-------------|
-| `power_outage_scraper.py` | Головний скрипт (парсер + daemon loop) |
-| `ha_rest_publisher.py` | Публікація даних в HA через REST API |
-| `config.yaml` | Всі налаштування |
-| `power-outage.service` | Systemd сервіс для RPi5 |
-| `setup.sh` | Автоматичне налаштування на RPi5 |
+This integration automatically scrapes power outage schedule from LOE (Lvivoblenergo) website and creates sensors and calendars in Home Assistant.
 
 ---
 
-## 🚀 Деплой на Raspberry Pi 5
+## 📦 Installation
 
-### Крок 1 — Клонуй репозиторій на RPi
+### Option 1: HACS (Recommended)
 
-Підключись до RPi по SSH і виконай:
-```bash
-git clone git@github.com:orest0/LOE-Power-Outage-Scraper.git ~/power_outages
-cd ~/power_outages
-```
+1. Open Home Assistant
+2. Go to **HACS** → **Integrations**
+3. Click the **⋮** menu → **Custom repositories**
+4. Add: `https://github.com/orest0/LOE-Power-Outage-Scraper`
+5. Select category: **Integration**
+6. Find "LOE Power Outage Scraper" and click **Install**
 
-### Крок 2 — Отримай HA Long-Lived Access Token
+### Option 2: Manual
 
-1. Відкрий Home Assistant
-2. Натисни на **своє ім'я** (ліворуч знизу)
-3. Прокрути вниз → **Long-Lived Access Tokens**
-4. Натисни **Create Token**, дай йому назву `power-outage`
-5. **Скопіюй токен** (він показується лише один раз!)
-
-### Крок 3 — Налаштуй config.yaml
-
-```bash
-nano ~/power_outages/config.yaml
-```
-
-Вставте свій токен:
-```yaml
-home_assistant:
-  url: "http://localhost:8123"
-  token: "eyJ0eXAiOiJKV1..."   # ← вставити сюди
-
-scraper:
-  url: "https://poweron.loe.lviv.ua"
-  interval_minutes: 30
-  json_output: "power_outages.json"
-```
-
-### Крок 4 — Тест (один запуск)
-
-```bash
-cd ~/power_outages
-pip3 install requests pyyaml playwright
-python3 -m playwright install chromium
-python3 power_outage_scraper.py --once
-```
-
-Ти повинен побачити щось на кшталт:
-```
-2026-04-09 16:00:00 [INFO] 🌐 Завантажую дані з https://poweron.loe.lviv.ua...
-2026-04-09 16:00:01 [INFO] Знайдено 12 груп відключень
-2026-04-09 16:00:01 [INFO] 💾 Збережено: power_outages.json
-2026-04-09 16:00:01 [INFO] 📡 Публікую 12 груп в HA...
-2026-04-09 16:00:02 [INFO] ✅ Опубліковано 38 сутностей в HA
-```
-
-### Крок 5 — Встановлення як системний сервіс
-
-```bash
-cd ~/power_outages
-sudo bash setup.sh
-```
-
-Скрипт сам:
-- встановить залежності
-- налаштує сервіс під твого користувача
-- увімкне автозапуск при старті RPi
+1. Copy `custom_components/power_outage/` folder to your Home Assistant config folder:
+   ```
+   /config/custom_components/power_outage/
+   ```
+2. Restart Home Assistant
 
 ---
 
-## 🏠 Що з'явиться в Home Assistant
+## ⚙️ Configuration
 
-Після першого запуску в **Developer Tools → States** з'являться:
+### Step 1: Add Integration
 
-### Глобальні сенсори
-| Entity ID | Опис |
-|-----------|------|
-| `sensor.power_outage_last_updated` | Час оновлення даних з LOE |
-| `sensor.power_outage_active_groups` | Групи без світла прямо зараз |
+1. Go to **Settings** → **Devices & Services**
+2. Click **Add Integration**
+3. Search for "LOE Power Outage"
+4. Configure:
+   - **URL**: `https://poweron.loe.lviv.ua` (default)
+   - **Update Interval**: 10 minutes (default)
 
-### Для кожної групи (напр. група `2.1` → суфікс `2_1`)
-| Entity ID | Опис |
-|-----------|------|
-| `binary_sensor.power_outage_2_1` | `on` = відключення зараз, `off` = світло є |
-| `sensor.power_outage_2_1_next_start` | Коли почнеться наступне відключення |
-| `sensor.power_outage_2_1_next_end` | Коли закінчиться |
-
-У **атрибутах** `binary_sensor.power_outage_2_1`:
-- `schedule` — весь графік дня: `["08:00–10:00", "16:00–18:00"]`
-- `total_periods` — кількість відключень сьогодні
-- `current_outage_ends` — коли закінчиться поточне (якщо активне)
-- `next_outage_start` / `next_outage_end` — наступне
+### Step 2: Enjoy! 🎉
 
 ---
 
-## ⚡ Приклади автоматизацій в HA
+## 📱 Entities Created
 
-### Сповіщення коли починається відключення
+### Global Sensors
+
+| Entity ID | Description |
+|-----------|-------------|
+| `sensor.power_outage_last_updated` | Last data update time |
+| `sensor.power_outage_active_groups` | Groups without power right now |
+
+### Per Group Sensors
+
+For each outage group (e.g., group `2.1` → suffix `2_1`):
+
+| Entity ID | Description |
+|-----------|-------------|
+| `binary_sensor.power_outage_2_1` | `on` = outage active, `off` = power on |
+| `sensor.power_outage_2_1_next_start` | Next outage start time |
+| `sensor.power_outage_2_1_next_end` | Next outage end time |
+| `sensor.power_outage_2_1_tomorrow` | First tomorrow outage start |
+| `calendar.power_outage_2_1` | Calendar with all outages |
+
+### Binary Sensor Attributes
+
+- `schedule`: Today's schedule `["08:00–10:00", "16:00–18:00"]`
+- `total_periods`: Number of outages today
+- `current_outage_ends`: When current outage ends (if active)
+- `next_outage_start` / `next_outage_end`: Next outage times
+- `events`: All events (today + tomorrow)
+
+### Tomorrow Sensor Attributes
+
+- `schedule`: Tomorrow schedule
+- `total_periods`: Number of outages tomorrow
+- `events`: All events including today and tomorrow
+
+---
+
+## ⚡ Automation Examples
+
+### Notify when outage starts
+
 ```yaml
 automation:
-  - alias: "Почалось відключення"
+  - alias: "Outage Started"
     trigger:
       - platform: state
-        entity_id: binary_sensor.power_outage_2_1   # ← заміни на свою групу
+        entity_id: binary_sensor.power_outage_2_1
         to: "on"
     action:
       - service: notify.mobile_app_your_phone
         data:
-          title: "⚡ Відключення!"
-          message: >
-            Відключення до {{ state_attr('binary_sensor.power_outage_2_1', 'current_outage_ends') }}
+          title: "⚡ Outage!"
+          message: "Outage until {{ state_attr('binary_sensor.power_outage_2_1', 'current_outage_ends') }}"
 ```
 
-### Сповіщення за 30 хв до відключення
+### Notify 30 min before outage
+
 ```yaml
 automation:
-  - alias: "Попередження про відключення"
+  - alias: "Warning Before Outage"
     trigger:
       - platform: template
         value_template: >
@@ -141,49 +116,35 @@ automation:
     action:
       - service: notify.mobile_app_your_phone
         data:
-          title: "⚠️ Через 30 хв відключення!"
-          message: "З {{ states('sensor.power_outage_2_1_next_start') }} до {{ states('sensor.power_outage_2_1_next_end') }}"
-```
-
-### Увімкнути зарядку повербанку коли є світло
-```yaml
-automation:
-  - alias: "Зарядка при наявності світла"
-    trigger:
-      - platform: state
-        entity_id: binary_sensor.power_outage_2_1
-        to: "off"
-    action:
-      - service: switch.turn_on
-        entity_id: switch.powerbank_charger
+          title: "⚠️ Outage in 30 min!"
+          message: "From {{ states('sensor.power_outage_2_1_next_start') }} to {{ states('sensor.power_outage_2_1_next_end') }}"
 ```
 
 ---
 
-## 🔧 Керування сервісом на RPi
+## 🔧 Troubleshooting
 
-```bash
-# Перевірити статус
-sudo systemctl status power-outage
+### No entities appear
 
-# Подивитись логи в реальному часі
-journalctl -u power-outage -f
+- Check Home Assistant logs: **Settings** → **System** → **Logs**
+- Make sure playwright is installed: `pip3 install playwright && python3 -m playwright install chromium`
 
-# Перезапустити
-sudo systemctl restart power-outage
+### Calendar not showing events
 
-# Зупинити
-sudo systemctl stop power-outage
-```
+- Make sure `local_calendar` integration is installed in Home Assistant
+- Go to **Settings** → **Devices & Services** → **Add integration** → search "Local Calendar"
 
 ---
 
-## ❓ Troubleshooting
+## 📋 Requirements
 
-**`HTTP 401 Unauthorized`** — невірний або прострочений токен в `config.yaml`
+- Home Assistant 2024.1+
+- Python 3.11+
+- playwright
+- pyyaml
 
-**`Connection refused`** — HA не запущений або невірна URL в config
+---
 
-**Сенсори не з'являються в HA** — перевір логи: `journalctl -u power-outage -n 50`
+## 🤝 Contributing
 
-**Жодної групи не знайдено** — можливо сайт LOE змінив HTML структуру; перевір вручну: `python3 power_outage_scraper.py --once`
+Pull requests are welcome! Please feel free to submit a Pull Request.

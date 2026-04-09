@@ -102,24 +102,57 @@ def extract_outage_info(text: str) -> list:
     """Extract outage group information from the page text."""
     outages = []
 
-    pattern = r"Група ([\d.]+)\. Електроенергії немає з (.+?)(?=\nГрупа|\Z)"
-    matches = re.findall(pattern, text, re.DOTALL)
+    date_pattern = r"Графік погодинних відключень на (\d{2}\.\d{2}\.\d{4})"
+    date_matches = list(re.finditer(date_pattern, text))
 
-    logger.info(f"Знайдено {len(matches)} груп відключень")
+    if not date_matches:
+        logger.warning("Не знайдено заголовків з датами")
+        return []
 
-    for group, ranges_str in matches:
-        ranges_str = ranges_str.strip()
-        range_parts = re.split(r",\s*з\s*", ranges_str)
+    date_sections = []
+    for i, match in enumerate(date_matches):
+        section_date = match.group(1)
+        start_pos = match.end()
+        end_pos = (
+            date_matches[i + 1].start() if i + 1 < len(date_matches) else len(text)
+        )
+        date_sections.append((section_date, text[start_pos:end_pos]))
 
-        outage_ranges = []
-        for range_part in range_parts:
-            range_part = range_part.strip()
-            match = re.search(r"(\d{1,2}:\d{2})\s*до\s*(\d{1,2}:\d{2})", range_part)
-            if match:
-                outage_ranges.append({"start": match.group(1), "end": match.group(2)})
+    logger.info(f"Знайдено {len(date_sections)} секцій з датами")
 
-        if outage_ranges:
-            outages.append({"group": group, "outages": outage_ranges})
+    for section_date, section_text in date_sections:
+        pattern = r"Група ([\d.]+)\. Електроенергії немає з (.+?)(?=\nГрупа|\Z)"
+        matches = re.findall(pattern, section_text, re.DOTALL)
+
+        for group, ranges_str in matches:
+            existing_group = next((g for g in outages if g["group"] == group), None)
+
+            if not existing_group:
+                existing_group = {
+                    "group": group,
+                    "outages_today": [],
+                    "outages_tomorrow": [],
+                }
+                outages.append(existing_group)
+
+            ranges_str = ranges_str.strip()
+            range_parts = re.split(r",\s*з\s*", ranges_str)
+
+            outage_ranges = []
+            for range_part in range_parts:
+                range_part = range_part.strip()
+                match = re.search(r"(\d{1,2}:\d{2})\s*до\s*(\d{1,2}:\d{2})", range_part)
+                if match:
+                    outage_ranges.append(
+                        {"start": match.group(1), "end": match.group(2)}
+                    )
+
+            if outage_ranges:
+                today = datetime.now().strftime("%d.%m.%Y")
+                if section_date == today:
+                    existing_group["outages_today"].extend(outage_ranges)
+                else:
+                    existing_group["outages_tomorrow"].extend(outage_ranges)
 
     return outages
 
@@ -163,8 +196,15 @@ def run_once(config: dict) -> bool:
 
     logger.info(f"Груп: {len(outage_groups)}")
     for g in outage_groups:
-        periods = ", ".join(f"{o['start']}-{o['end']}" for o in g["outages"])
-        logger.info(f"  Група {g['group']}: {periods or 'нема'}")
+        today_periods = ", ".join(
+            f"{o['start']}-{o['end']}" for o in g.get("outages_today", [])
+        )
+        tomorrow_periods = ", ".join(
+            f"{o['start']}-{o['end']}" for o in g.get("outages_tomorrow", [])
+        )
+        logger.info(
+            f"  Група {g['group']}: сьогодні: {today_periods or 'нема'}, завтра: {tomorrow_periods or 'нема'}"
+        )
 
     publish_to_ha(config, result)
 
