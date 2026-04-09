@@ -15,7 +15,7 @@ from .sensor import parse_outage_page, PowerOutageGroup
 
 _LOGGER = logging.getLogger(__name__)
 
-DEFAULT_JSON_PATH = "/home/pi/loe_telegram_bot/data/outages.json"
+DEFAULT_JSON_PATH = "/home/pi/power_outages/data/outages.json"
 
 
 class PowerOutageCoordinator(DataUpdateCoordinator):

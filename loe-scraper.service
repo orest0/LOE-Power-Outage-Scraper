@@ -1,0 +1,13 @@
+[Unit]
+Description=LOE Power Outage Scraper
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/home/pi/power_outages/run_scraper.sh
+User=pi
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

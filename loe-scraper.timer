@@ -1,0 +1,11 @@
+[Unit]
+Description=LOE Power Outage Scraper Timer
+After=network.target
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=10min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
