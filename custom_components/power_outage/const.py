@@ -4,10 +4,12 @@ DOMAIN = "power_outage"
 
 DEFAULT_URL = "https://poweron.loe.lviv.ua"
 DEFAULT_INTERVAL = 10
+DEFAULT_JSON_PATH = "/home/pi/loe_telegram_bot/data/outages.json"
 
 CONF_URL = "url"
 CONF_INTERVAL = "interval"
 CONF_GROUPS = "groups"
+CONF_JSON_FILE = "json_file"
 
 ALL_GROUPS = [
     "1.1",

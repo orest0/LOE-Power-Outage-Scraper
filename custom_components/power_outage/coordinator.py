@@ -2,7 +2,8 @@
 
 from datetime import datetime, timedelta
 import logging
-import asyncio
+import json
+from pathlib import Path
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -14,6 +15,8 @@ from .sensor import parse_outage_page, PowerOutageGroup
 
 _LOGGER = logging.getLogger(__name__)
 
+DEFAULT_JSON_PATH = "/home/pi/loe_telegram_bot/data/outages.json"
+
 
 class PowerOutageCoordinator(DataUpdateCoordinator):
     """Class to manage fetching power outage data."""
@@ -22,7 +25,7 @@ class PowerOutageCoordinator(DataUpdateCoordinator):
         """Initialize."""
         self.hass = hass
         self.config = config
-        self.url = config.get(CONF_URL, "https://poweron.loe.lviv.ua")
+        self.json_path = config.get("json_file", DEFAULT_JSON_PATH)
         self.interval = config.get(CONF_INTERVAL, 10)
 
         super().__init__(
@@ -36,28 +39,31 @@ class PowerOutageCoordinator(DataUpdateCoordinator):
         self._last_updated = None
 
     async def _async_update_data(self) -> dict:
-        """Update data via Playwright."""
+        """Update data from JSON file."""
         try:
-            loop = asyncio.get_event_loop()
+            json_file = Path(self.json_path)
 
-            def fetch_with_playwright():
-                from playwright.sync_api import sync_playwright
+            if not json_file.exists():
+                _LOGGER.warning(f"JSON file not found: {self.json_path}")
+                return {"groups": [], "last_updated": None}
 
-                with sync_playwright() as p:
-                    browser = p.chromium.launch(headless=True)
-                    page = browser.new_page()
-                    page.goto(self.url, wait_until="networkidle", timeout=30000)
-                    content = page.inner_text("body")
-                    browser.close()
-                    return content
+            with open(json_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
 
-            content = await loop.run_in_executor(None, fetch_with_playwright)
+            last_updated = data.get("last_updated", datetime.now().isoformat())
 
-            last_updated = datetime.now().isoformat()
+            groups = []
+            for group_data in data.get("groups", []):
+                group = PowerOutageGroup(group_data.get("id", ""))
+                group.outages_today = group_data.get("outages_today", [])
+                group.outages_tomorrow = group_data.get("outages_tomorrow", [])
+                groups.append(group)
 
-            self.groups = parse_outage_page(content)
+            self.groups = groups
 
-            _LOGGER.info(f"Found {len(self.groups)} outage groups")
+            _LOGGER.info(
+                f"Loaded {len(self.groups)} outage groups from {self.json_path}"
+            )
 
             return {
                 "groups": self.groups,
@@ -65,5 +71,5 @@ class PowerOutageCoordinator(DataUpdateCoordinator):
             }
 
         except Exception as e:
-            _LOGGER.error(f"Error fetching data: {e}")
-            return {}
+            _LOGGER.error(f"Error loading data: {e}")
+            return {"groups": [], "last_updated": None}
