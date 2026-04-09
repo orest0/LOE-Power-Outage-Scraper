@@ -1,7 +1,6 @@
 # 🔌 LOE Power Outage Scraper - Home Assistant Integration
 
 [![Open your Home Assistant instance and open the repository inside the HACS store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=orest0&repository=LOE-Power-Outage-Scraper&category=integration)
-[![Validate the integration with the Quality Scale S](https://badgers.home-assistant.io/loae_power_outage_scraper/quality_scale.svg)](https://developers.home-assistant.io/docs/quality_scale/)
 
 Ukrainian Power Outage Scraper Integration for Home Assistant. Automatically fetches power outage schedule from poweron.loe.lviv.ua and creates sensors and calendars in Home Assistant.
 
