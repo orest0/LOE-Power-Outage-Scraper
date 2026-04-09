@@ -33,6 +33,7 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
             continue
 
         is_active = False
+        no_power = False
         current_outage = None
         next_outage = None
 
@@ -44,7 +45,7 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
                 continue
 
             if t_start <= current_time <= t_end:
-                is_active = True
+                no_power = True
                 current_outage = outage
             elif t_start > current_time and next_outage is None:
                 next_outage = outage
@@ -52,7 +53,7 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
         entities.append(
             PowerOutageBinarySensor(
                 group.group_id,
-                is_active,
+                not no_power,  # Inverted: ON = power available
                 current_outage,
                 next_outage,
                 group.outages_today,
@@ -171,17 +172,18 @@ class PowerOutageBinarySensor(BinarySensorEntity):
         self._attr_unique_id = f"power_outage_{group_id.replace('.', '_')}"
         self._attr_name = f"Power Outage {group_id}"
         self._attr_is_on = is_active
-        self._attr_icon = "mdi:power-plug-off" if is_active else "mdi:power-plug"
-        self._attr_device_class = "problem"
+        self._attr_icon = "mdi:power-plug" if is_active else "mdi:power-plug-off"
+        self._attr_device_class = "power"
 
         schedule = [f"{o['start']}–{o['end']}" for o in outages]
         self._attr_extra_state_attributes = {
             "schedule": schedule,
             "total_periods": len(outages),
             "group": group_id,
+            "power_available": is_active,
         }
 
-        if is_active and current_outage:
+        if not is_active and current_outage:
             self._attr_extra_state_attributes["current_outage_ends"] = current_outage[
                 "end"
             ]
