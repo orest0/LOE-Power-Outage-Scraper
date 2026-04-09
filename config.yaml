@@ -1,11 +1,11 @@
 home_assistant:
   url: "http://localhost:8123"
   # Генерується в HA: Profile → Long-Lived Access Tokens → Create Token
-  token: "PASTE_YOUR_TOKEN_HERE"
+  token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJlMmQ4NTU1YzNiMTY0MDVjYjRiN2U1NGIyMGRjM2YzOSIsImlhdCI6MTc3NTc0MjQ2MCwiZXhwIjoyMDkxMTAyNDYwfQ.SqMgBvrZrP5WPOUqETUN_dFu69ayPUFel-U0c0xPiWE"
 
 scraper:
   url: "https://poweron.loe.lviv.ua"
   # Як часто перевіряти сайт (хвилини)
-  interval_minutes: 30
+  interval_minutes: 10
   # Куди зберігати JSON файл (абсолютний шлях)
   json_output: "power_outages.json"

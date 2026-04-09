@@ -56,7 +56,8 @@ scraper:
 
 ```bash
 cd ~/power_outages
-pip3 install requests pyyaml
+pip3 install requests pyyaml playwright
+python3 -m playwright install chromium
 python3 power_outage_scraper.py --once
 ```
 

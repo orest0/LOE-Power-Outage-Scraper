@@ -2,8 +2,7 @@
 """
 Script to scrape power outage information from https://poweron.loe.lviv.ua
 and save it as JSON with ISO datetime format.
-Publishes data to Home Assistant via REST API.
-Works without BeautifulSoup using only regex and requests.
+Uses Playwright to render JavaScript content.
 """
 
 import re
@@ -13,13 +12,19 @@ import argparse
 import sys
 import time
 import yaml
-import requests
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
+
+try:
+    from playwright.sync_api import sync_playwright
+except ImportError:
+    print(
+        "Error: Playwright not installed. Run: pip install playwright && python3 -m playwright install chromium"
+    )
+    sys.exit(1)
 
 from ha_rest_publisher import publish_to_ha
 
-# ── Logging ──────────────────────────────────────────────────────────────────
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -27,8 +32,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-
-# ── Config ───────────────────────────────────────────────────────────────────
 
 def load_config(path: str = "config.yaml") -> dict:
     """Load YAML config file."""
@@ -40,117 +43,105 @@ def load_config(path: str = "config.yaml") -> dict:
         return yaml.safe_load(f)
 
 
-# ── Scraper functions (original, unchanged) ───────────────────────────────────
-
-def fetch_page_content(url):
-    """Fetch the webpage content."""
-    try:
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-                          '(KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        }
-        response = requests.get(url, headers=headers, timeout=10)
-        response.raise_for_status()
-        return response.text
-    except requests.RequestException as e:
-        logger.error(f"Error fetching page: {e}")
-        return None
+def fetch_page_content(url: str) -> str:
+    """Fetch the webpage content using Playwright."""
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        page = browser.new_page()
+        page.goto(url, wait_until="networkidle", timeout=30000)
+        time.sleep(1)
+        content = page.inner_text("body")
+        browser.close()
+        return content
 
 
-def extract_update_timestamp(text):
+def extract_update_timestamp(text: str) -> str:
     """Extract the last update timestamp from the page text."""
-    match = re.search(
-        r'\*\*Інформація станом на (\d{1,2}:\d{2} \d{2}\.\d{2}\.\d{4})\*\*', text
-    )
+    match = re.search(r"Інформація станом на (\d{1,2}:\d{2} \d{2}\.\d{2}\.\d{4})", text)
     if match:
         update_str = match.group(1)
         try:
-            update_dt = datetime.strptime(update_str, '%H:%M %d.%m.%Y')
+            update_dt = datetime.strptime(update_str, "%H:%M %d.%m.%Y")
             return update_dt.isoformat()
         except ValueError:
             pass
 
     match = re.search(
-        r'— Дата та час оновлення діючих вимкненнь: (\w+), (\d+) (\w+) (\d+) р\. (\d{2}:\d{2}:\d{2})',
+        r"Дата та час оновлення діючих вимкненнь: (\w+), (\d+) (\w+) (\d+) р\. (\d{2}:\d{2}:\d{2})",
         text,
     )
     if match:
         day_name, day, month_name, year, time_str = match.groups()
         month_map = {
-            'січня': '01', 'лютого': '02', 'березня': '03', 'квітня': '04',
-            'травня': '05', 'червня': '06', 'липня': '07', 'серпня': '08',
-            'вересня': '09', 'жовтня': '10', 'листопада': '11', 'грудня': '12',
+            "січня": "01",
+            "лютого": "02",
+            "березня": "03",
+            "квітня": "04",
+            "травня": "05",
+            "червня": "06",
+            "липня": "07",
+            "серпня": "08",
+            "вересня": "09",
+            "жовтня": "10",
+            "листопада": "11",
+            "грудня": "12",
         }
-        month = month_map.get(month_name.lower(), '01')
+        month = month_map.get(month_name.lower(), "01")
         try:
-            update_dt = datetime.strptime(f'{year}-{month}-{day} {time_str}', '%Y-%m-%d %H:%M:%S')
+            update_dt = datetime.strptime(
+                f"{year}-{month}-{day} {time_str}", "%Y-%m-%d %H:%M:%S"
+            )
             return update_dt.isoformat()
         except ValueError:
             pass
 
-    return datetime.now().isoformat()
+    return datetime.now(timezone.utc).isoformat()
 
 
-def extract_outage_info(text):
+def extract_outage_info(text: str) -> list:
     """Extract outage group information from the page text."""
     outages = []
 
-    section_pattern = (
-        r'\*\*Графік погодинних відключень на \d{2}\.\d{2}\.\d{4}\*\*'
-        r'[\s\S]*?(?=\*\*|\n\n\n|\Z)'
-    )
-    section_match = re.search(section_pattern, text)
-    section_text = section_match.group(0) if section_match else text
+    pattern = r"Група ([\d.]+)\. Електроенергії немає з (.+?)(?=\nГрупа|\Z)"
+    matches = re.findall(pattern, text, re.DOTALL)
 
-    outage_pattern = (
-        r'Група (\d+\.\d+)\. Електроенергії немає з '
-        r'((?:\d{2}:\d{2} до \d{2}:\d{2}(?:, з \d{2}:\d{2} до \d{2}:\d{2})*))'
-    )
-    matches = re.findall(outage_pattern, section_text)
     logger.info(f"Знайдено {len(matches)} груп відключень")
 
     for group, ranges_str in matches:
-        ranges = [r.strip() for r in ranges_str.split(', з ')]
-        if ranges[0].startswith('з '):
-            ranges[0] = ranges[0][2:]
+        ranges_str = ranges_str.strip()
+        range_parts = re.split(r",\s*з\s*", ranges_str)
 
         outage_ranges = []
-        for range_str in ranges:
-            if ' до ' in range_str:
-                start_str, end_str = range_str.split(' до ')
-                outage_ranges.append({
-                    'start': start_str.strip(),
-                    'end': end_str.strip(),
-                })
+        for range_part in range_parts:
+            range_part = range_part.strip()
+            match = re.search(r"(\d{1,2}:\d{2})\s*до\s*(\d{1,2}:\d{2})", range_part)
+            if match:
+                outage_ranges.append({"start": match.group(1), "end": match.group(2)})
 
-        outages.append({'group': group, 'outages': outage_ranges})
+        if outage_ranges:
+            outages.append({"group": group, "outages": outage_ranges})
 
     return outages
 
 
-# ── Main run logic ────────────────────────────────────────────────────────────
-
 def run_once(config: dict) -> bool:
-    """
-    Single scrape + save + publish cycle.
-    Returns True on success.
-    """
+    """Single scrape + save + publish cycle. Returns True on success."""
     url = config["scraper"]["url"]
     output_file = Path(config["scraper"]["json_output"])
 
     logger.info(f"🌐 Завантажую дані з {url}...")
-    html_content = fetch_page_content(url)
+    text_content = fetch_page_content(url)
 
-    if not html_content:
+    if not text_content:
         logger.error("Не вдалося отримати дані з сайту.")
         return False
 
-    logger.info(f"Завантажено {len(html_content)} символів")
+    logger.info(f"Завантажено {len(text_content)} символів")
 
-    last_updated = extract_update_timestamp(html_content)
+    last_updated = extract_update_timestamp(text_content)
     logger.info(f"Дані станом на: {last_updated}")
 
-    outage_groups = extract_outage_info(html_content)
+    outage_groups = extract_outage_info(text_content)
 
     if not outage_groups:
         logger.warning("⚠️  Жодної групи відключень не знайдено на сторінці.")
@@ -161,7 +152,6 @@ def run_once(config: dict) -> bool:
         "outage_groups": outage_groups,
     }
 
-    # Зберегти JSON
     try:
         output_file.parent.mkdir(parents=True, exist_ok=True)
         with open(output_file, "w", encoding="utf-8") as f:
@@ -171,13 +161,11 @@ def run_once(config: dict) -> bool:
         logger.error(f"Помилка збереження JSON: {e}")
         return False
 
-    # Надрукувати підсумок
     logger.info(f"Груп: {len(outage_groups)}")
     for g in outage_groups:
-        periods = ", ".join(f"{o['start']}–{o['end']}" for o in g["outages"])
+        periods = ", ".join(f"{o['start']}-{o['end']}" for o in g["outages"])
         logger.info(f"  Група {g['group']}: {periods or 'нема'}")
 
-    # Опублікувати в HA
     publish_to_ha(config, result)
 
     return True
@@ -186,7 +174,9 @@ def run_once(config: dict) -> bool:
 def run_daemon(config: dict):
     """Run scraper in a loop (daemon mode)."""
     interval = config["scraper"]["interval_minutes"] * 60
-    logger.info(f"🔄 Daemon mode: оновлення кожні {config['scraper']['interval_minutes']} хв.")
+    logger.info(
+        f"🔄 Daemon mode: оновлення кожні {config['scraper']['interval_minutes']} хв."
+    )
 
     while True:
         try:
@@ -194,11 +184,11 @@ def run_daemon(config: dict):
         except Exception as e:
             logger.exception(f"Неочікувана помилка: {e}")
 
-        logger.info(f"💤 Наступна перевірка через {config['scraper']['interval_minutes']} хв.")
+        logger.info(
+            f"💤 Наступна перевірка через {config['scraper']['interval_minutes']} хв."
+        )
         time.sleep(interval)
 
-
-# ── Entry point ───────────────────────────────────────────────────────────────
 
 def main():
     parser = argparse.ArgumentParser(
