@@ -4,7 +4,8 @@ import logging
 from typing import Any
 
 import voluptuous as vol
-from homeassistant.config_entries import ConfigFlow, FlowResult
+from homeassistant import config_entries
+from homeassistant.data_entry_flow import FlowResult
 
 from .const import (
     ALL_GROUPS,
@@ -18,19 +19,8 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
-STEP_USER_DATA_SCHEMA = vol.Schema(
-    {
-        vol.Required(CONF_URL, default=DEFAULT_URL): str,
-        vol.Required(CONF_INTERVAL, default=DEFAULT_INTERVAL): int,
-        vol.Required(CONF_GROUPS, default=ALL_GROUPS): vol.All(
-            vol.Length(min=1),
-            [vol.In(ALL_GROUPS)],
-        ),
-    }
-)
 
-
-class LOEPowerOutageConfigFlow(ConfigFlow, domain=DOMAIN):
+class LOEPowerOutageConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Config flow for LOE Power Outage."""
 
     async def async_step_user(
@@ -49,8 +39,15 @@ class LOEPowerOutageConfigFlow(ConfigFlow, domain=DOMAIN):
                     title="LOE Power Outage", data=user_input
                 )
 
+        schema = vol.Schema(
+            {
+                vol.Required(CONF_URL, default=DEFAULT_URL): str,
+                vol.Required(CONF_INTERVAL, default=DEFAULT_INTERVAL): int,
+            }
+        )
+
         return self.async_show_form(
             step_id="user",
-            data_schema=STEP_USER_DATA_SCHEMA,
+            data_schema=schema,
             errors=errors,
         )
