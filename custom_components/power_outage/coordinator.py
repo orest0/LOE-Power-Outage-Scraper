@@ -14,7 +14,6 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .const import CONF_INTERVAL, CONF_URL, DOMAIN
 from .sensor import parse_outage_page, PowerOutageGroup
-from .calendar import create_calendar_entities
 
 _LOGGER = logging.getLogger(__name__)
 
