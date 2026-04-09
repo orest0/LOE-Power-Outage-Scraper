@@ -17,6 +17,8 @@ from .sensor import (
 )
 from .calendar import PowerOutageCalendar
 
+from . import config_flow
+
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS = ["sensor", "calendar"]
