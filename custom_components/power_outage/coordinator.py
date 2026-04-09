@@ -5,9 +5,6 @@ import logging
 import asyncio
 from typing import Any
 
-import requests
-from bs4 import BeautifulSoup
-
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
@@ -39,23 +36,26 @@ class PowerOutageCoordinator(DataUpdateCoordinator):
         self._last_updated = None
 
     async def _async_update_data(self) -> dict:
-        """Update data via HTTP request."""
+        """Update data via Playwright."""
         try:
             loop = asyncio.get_event_loop()
 
-            def fetch_data():
-                response = requests.get(self.url, timeout=30)
-                response.raise_for_status()
-                return response.text
+            def fetch_with_playwright():
+                from playwright.sync_api import sync_playwright
 
-            content = await loop.run_in_executor(None, fetch_data)
+                with sync_playwright() as p:
+                    browser = p.chromium.launch(headless=True)
+                    page = browser.new_page()
+                    page.goto(self.url, wait_until="networkidle", timeout=30000)
+                    content = page.inner_text("body")
+                    browser.close()
+                    return content
 
-            soup = BeautifulSoup(content, "html.parser")
-            text = soup.get_text()
+            content = await loop.run_in_executor(None, fetch_with_playwright)
 
             last_updated = datetime.now().isoformat()
 
-            self.groups = parse_outage_page(text)
+            self.groups = parse_outage_page(content)
 
             _LOGGER.info(f"Found {len(self.groups)} outage groups")
 
