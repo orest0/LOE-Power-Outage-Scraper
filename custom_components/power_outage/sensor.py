@@ -15,6 +15,11 @@ from .const import DOMAIN
 _LOGGER = logging.getLogger(__name__)
 
 
+async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
+    """Set up sensors from config entry."""
+    pass
+
+
 def parse_outage_time(t_str: str):
     """Parse HH:MM string to time."""
     return datetime.strptime(t_str, "%H:%M").time()

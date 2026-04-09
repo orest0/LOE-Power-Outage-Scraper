@@ -15,6 +15,11 @@ from .sensor import parse_outage_page, PowerOutageGroup
 _LOGGER = logging.getLogger(__name__)
 
 
+async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
+    """Set up calendar from config entry."""
+    pass
+
+
 def create_calendar_entities(groups: list[PowerOutageGroup]) -> list:
     """Create calendar entities from groups."""
     entities = []
