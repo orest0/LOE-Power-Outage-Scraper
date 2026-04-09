@@ -4,8 +4,7 @@ import logging
 from typing import Any
 
 import voluptuous as vol
-from homeassistant import config_entries
-from homeassistant.data_entry_flow import FlowResult
+from homeassistant.config_entries import ConfigFlow, FlowResult
 
 from .const import (
     ALL_GROUPS,
@@ -31,7 +30,10 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
 )
 
 
-async def async_step_user(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+class LOEPowerOutageConfigFlow(ConfigFlow, domain=DOMAIN):
+    """Config flow for LOE Power Outage."""
+
+    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> FlowResult:
     """Handle a flow initiated by the user."""
     errors: dict[str, str] = {}
 
