@@ -12,7 +12,7 @@ from .coordinator import PowerOutageCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS = ["sensor", "calendar"]
+PLATFORMS = ["sensor", "binary_sensor", "calendar"]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

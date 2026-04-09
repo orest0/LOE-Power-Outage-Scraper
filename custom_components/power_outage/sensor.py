@@ -32,33 +32,15 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
         if selected_groups and group.group_id not in selected_groups:
             continue
 
-        is_active = False
-        no_power = False
-        current_outage = None
         next_outage = None
 
         for outage in group.outages_today:
             try:
                 t_start = parse_outage_time(outage["start"])
-                t_end = parse_outage_time(outage["end"])
             except ValueError:
                 continue
-
-            if t_start <= current_time <= t_end:
-                no_power = True
-                current_outage = outage
-            elif t_start > current_time and next_outage is None:
+            if t_start > current_time and next_outage is None:
                 next_outage = outage
-
-        entities.append(
-            PowerOutageBinarySensor(
-                group.group_id,
-                not no_power,  # Inverted: ON = power available
-                current_outage,
-                next_outage,
-                group.outages_today,
-            )
-        )
 
         entities.append(
             PowerOutageNextSensor(
