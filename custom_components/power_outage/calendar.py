@@ -15,21 +15,12 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
     """Set up calendar from config entry."""
     from .coordinator import PowerOutageCoordinator
 
-    _LOGGER.debug(f"Calendar setup entry: {entry.entry_id}")
-    _LOGGER.debug(f"hass.data keys: {list(hass.data.keys())}")
-
-    domain_data = hass.data.get(DOMAIN, {})
-    _LOGGER.debug(f"DOMAIN data keys: {list(domain_data.keys())}")
-
-    coordinator = domain_data.get(entry.entry_id)
+    coordinator = hass.data.get(DOMAIN, {}).get(entry.entry_id)
     if not coordinator:
-        _LOGGER.error(f"Coordinator not found for entry {entry.entry_id}")
-        _LOGGER.error(f"Available data: {domain_data}")
+        _LOGGER.error("Coordinator not found")
         return
 
-    _LOGGER.info(f"Coordinator found: {coordinator}")
     groups = coordinator.groups
-    _LOGGER.info(f"Groups: {[g.group_id for g in groups]}")
     selected_groups = entry.data.get(CONF_GROUPS, [])
 
     entities = []
