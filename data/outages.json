@@ -1,12 +1,12 @@
 {
-  "last_updated": "2026-04-09T19:53:00",
+  "last_updated": "2026-04-10T10:34:00",
   "date": "2026-04-10",
   "outage_groups": [
     {
       "group": "1.1",
       "outages_today": [
         {
-          "start": "18:00",
+          "start": "17:00",
           "end": "21:00"
         }
       ],
@@ -38,6 +38,10 @@
         {
           "start": "06:00",
           "end": "10:30"
+        },
+        {
+          "start": "14:00",
+          "end": "17:00"
         }
       ],
       "outages_tomorrow": []
@@ -57,7 +61,7 @@
       "outages_today": [
         {
           "start": "07:00",
-          "end": "11:00"
+          "end": "10:00"
         }
       ],
       "outages_tomorrow": []
@@ -104,7 +108,11 @@
           "end": "03:30"
         },
         {
-          "start": "17:30",
+          "start": "11:00",
+          "end": "13:30"
+        },
+        {
+          "start": "18:00",
           "end": "20:00"
         }
       ],
@@ -118,8 +126,8 @@
           "end": "03:30"
         },
         {
-          "start": "14:00",
-          "end": "17:30"
+          "start": "13:30",
+          "end": "18:00"
         }
       ],
       "outages_tomorrow": []
