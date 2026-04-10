@@ -30,9 +30,8 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
 
         entities.append(
             PowerOutageCalendar(
+                coordinator,
                 group.group_id,
-                group.outages_today,
-                group.outages_tomorrow,
             )
         )
 
@@ -44,23 +43,31 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
 class PowerOutageCalendar(CalendarEntity):
     """Calendar entity for power outage group."""
 
-    def __init__(self, group_id: str, outages_today: list, outages_tomorrow: list):
+    def __init__(self, coordinator, group_id: str):
+        self._coordinator = coordinator
         self._group_id = group_id
         self._suffix = group_id.replace(".", "_")
-        self._outages_today = outages_today
-        self._outages_tomorrow = outages_tomorrow
         self._attr_unique_id = f"power_outage_{self._suffix}"
         self._attr_name = f"Power Outage {group_id}"
         self._attr_icon = "mdi:calendar-clock"
 
+    def _get_outages(self):
+        """Get current outage data from coordinator."""
+        for group in self._coordinator.groups:
+            if group.group_id == self._group_id:
+                return group.outages_today, group.outages_tomorrow
+        return [], []
+
     def _get_events(self) -> list[CalendarEvent]:
         """Get all calendar events."""
+        outages_today, outages_tomorrow = self._get_outages()
+
         events = []
         now = datetime.now()
         today_str = now.strftime("%Y-%m-%d")
         tomorrow_str = (now + timedelta(days=1)).strftime("%Y-%m-%d")
 
-        for outage in self._outages_today:
+        for outage in outages_today:
             start_time = outage["start"]
             end_time = outage["end"]
 
@@ -82,7 +89,7 @@ class PowerOutageCalendar(CalendarEntity):
             except ValueError:
                 pass
 
-        for outage in self._outages_tomorrow:
+        for outage in outages_tomorrow:
             start_time = outage["start"]
             end_time = outage["end"]
 
