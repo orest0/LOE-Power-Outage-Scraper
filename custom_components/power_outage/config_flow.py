@@ -11,6 +11,7 @@ from .const import (
     ALL_GROUPS,
     CONF_GROUPS,
     CONF_INTERVAL,
+    CONF_JSON_URL,
     CONF_URL,
     DEFAULT_INTERVAL,
     DEFAULT_URL,
@@ -31,8 +32,14 @@ class LOEPowerOutageConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             url = user_input.get(CONF_URL, "")
-            if not (url.startswith("http://") or url.startswith("https://")):
+            if url and not (url.startswith("http://") or url.startswith("https://")):
                 errors[CONF_URL] = "invalid_url"
+
+            json_url = user_input.get(CONF_JSON_URL, "")
+            if json_url and not (
+                json_url.startswith("http://") or json_url.startswith("https://")
+            ):
+                errors[CONF_JSON_URL] = "invalid_url"
 
             if not errors:
                 return self.async_create_entry(
@@ -42,6 +49,7 @@ class LOEPowerOutageConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         schema = vol.Schema(
             {
                 vol.Required(CONF_URL, default=DEFAULT_URL): str,
+                vol.Optional(CONF_JSON_URL, default=""): str,
                 vol.Required(CONF_INTERVAL, default=DEFAULT_INTERVAL): int,
             }
         )

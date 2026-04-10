@@ -10,6 +10,7 @@ CONF_URL = "url"
 CONF_INTERVAL = "interval"
 CONF_GROUPS = "groups"
 CONF_JSON_FILE = "json_file"
+CONF_JSON_URL = "json_url"
 
 ALL_GROUPS = [
     "1.1",
