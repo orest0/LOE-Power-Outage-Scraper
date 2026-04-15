@@ -1,4 +1,4 @@
-# 🔌 LOE Power Outage Scraper - Home Assistant Integration
+# (В РОЗРОБЦІ) 🔌 LOE Power Outage Scraper - Home Assistant Integration
 
 [![Open your Home Assistant instance and open the repository inside the HACS store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=orest0&repository=LOE-Power-Outage-Scraper&category=integration)
 
